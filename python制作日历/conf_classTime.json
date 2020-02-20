@@ -1,0 +1,30 @@
+{
+  "classTime": [
+    {
+        "name":"1",
+        "startTime":"0800",
+        "endTime":"1000"
+    },
+    {
+        "name":"2",
+        "startTime":"1000",
+        "endTime":"1200"
+    },
+    {
+        "name":"3",
+        "startTime":"1400",
+        "endTime":"1600"
+    },
+    {
+        "name":"4",
+        "startTime":"1600",
+        "endTime":"1800"
+    },
+    {
+      "name":"5",
+      "startTime":"1900",
+      "endTime":"2100"
+    }
+  ]
+}
+
