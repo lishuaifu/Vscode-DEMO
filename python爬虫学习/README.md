@@ -37,6 +37,7 @@ crontab -e的相关介绍地址：https://blog.csdn.net/xjw440/article/details/7
 1.linux服务器安装mysql操作 ：https://www.jb51.net/article/157282.htm
 2.navicat远程连接数据库实现可视化的相关注意操作：https://blog.csdn.net/weixin_44487722/article/details/90144252?depth_1-utm_source=distribute.pc_relevant.none-task&utm_source=distribute.pc_relevant.none-task
 
+.
 
 
 
