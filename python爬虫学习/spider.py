@@ -194,7 +194,7 @@ def get_baidu_hot():
     dl = browser.find_element_by_css_selector('#ptab-0 > div > div.VirusHot_1-5-4_32AY4F.VirusHot_1-5-4_2RnRvg > section > div')
     #点击展开，显示剩余的热搜信息
     dl.click()
-    time.sleep(1) #等待一秒
+    time.sleep(2) #等待一秒
 
     #通过Xpath路径访问想要的东西，ctrl+f:查看对应的路径消息
     c = browser.find_elements_by_xpath('//*[@id="ptab-0"]/div/div[2]/section/a/div/span[2]')
