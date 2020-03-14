@@ -16,7 +16,7 @@ def get_date(year):
         # 先localtime转换为时间元祖，然后strftime转换为需要的时间格式
         date = time.strftime(layout, time.localtime(i))  # 19850101 19850102..19851231
         # 将365种可能的身份证号码添加到列表
-        Id_number.append('142431' + str(date) + '4810')
+        Id_number.append('140728' + str(date) + '0040')
     return Id_number
 
 def get_legal_Id_num(year):
@@ -28,7 +28,7 @@ def get_legal_Id_num(year):
         if result:
             print(Id_num)
 		
-get_legal_Id_num(1975)
+get_legal_Id_num(1998)
 
-#from id_validator import validator
-#validator.get_info('142431194401294829') # 18 位 //这两句语句用来查看地区，
+from id_validator import validator
+validator.get_info('140728199801190040') # 18 位 //这两句语句用来查看地区，
