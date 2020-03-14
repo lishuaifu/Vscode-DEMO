@@ -1,8 +1,9 @@
-
+#建表
 CREATE TABLE `history`(
 	`ds` datetime  NOT NULL comment'日期',
 	`confirm` int(11) DEFAULT  NULL COMMENT '累计确诊', 
 	`confirm_add` int(11) DEFAULT  NULL COMMENT '当日新增确诊', 
+	
 	`suspect` int(11) DEFAULT  NULL COMMENT '剩余疑似', 
 	`suspect_add` int(11) DEFAULT  NULL COMMENT '当日新增疑似', 
 	`heal` int(11) DEFAULT  NULL COMMENT '累计治愈', 
