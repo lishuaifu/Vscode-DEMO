@@ -1,15 +1,16 @@
+#爬取相关网站信息，并且将该网站的信息存入数据库中，最后将该文件转换成csv格式的文件。
 from bs4 import BeautifulSoup
 import requests
 import csv
 import time
-import re
+import re    #是基于正则表达式的，Python中re模块基本用法解析
 import random
 import traceback #追踪异常
 import pymysql
 import pandas  as  pd
 import os
 
-#获取相关的数据进行分析
+#获取的是恋家的网站的数据进行分析
 def get_rentfile():
     headers = {
         "user-agent":" Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36"
@@ -20,8 +21,8 @@ def get_rentfile():
     details = []
 
     while page<= 10:
-        time.sleep(2)
-        res = requests.get(url,headers)
+        time.sleep(2) #等待两秒钟
+        res = requests.get(url,headers) 
         print(res.status_code)
         html = res.text
         soup = BeautifulSoup(html,'html.parser')
@@ -31,14 +32,16 @@ def get_rentfile():
             title = item.find('p',class_='content__list--item--title twoline').find('a').text
             if '青年公寓' in title:
                 continue
+            #print(type(title)) #title是字符串类型的数据
             add = re.findall('.*?·(.*?) .*',title)[0]
+            #add1 = re.findall('.*?·(.*?) .*',title)
+            #print(add1)通过这一步可以分析得出add1是一个列表类型的对象，所以需要用[0]将数据信息提取出来。
             price = item.find('em').text
             link = 'https://bj.lianjia.com' + item.find('p',class_='content__list--item--title twoline').find('a')['href']
-            details.append([title,add,price,link])
+            details.append([title,add,price,link])#将这个元素加入到details列表的末尾（也就是插入到列表中数据）
         page += 1
 
     return details
-
 
 
 def get_conn():
@@ -126,8 +129,8 @@ def writer_file(results,fields):
             writer = csv.writer(file_test)
             ##写文件
             writer.writerows(results)
-
-
+            
 insert_rent()
 writer_file(results,fields)
+get_rentfile()
 

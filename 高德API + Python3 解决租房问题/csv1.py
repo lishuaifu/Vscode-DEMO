@@ -1,3 +1,4 @@
+#此模块用与将数据空中的文件转换成csv格式的信息
 import pandas  as  pd
 import csv
 import pymysql
