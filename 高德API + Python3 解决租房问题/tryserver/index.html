@@ -1,0 +1,269 @@
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
+    <title>毕业生租房</title>
+    <link rel="stylesheet" href="http://cache.amap.com/lbs/static/main1119.css" />
+    <link rel="stylesheet" href="http://cache.amap.com/lbs/static/jquery.range.css" />
+    <script src="http://cache.amap.com/lbs/static/jquery-1.9.1.js"></script>
+    <script src="http://cache.amap.com/lbs/static/es5.min.js"></script>
+    <script src="http://webapi.amap.com/maps?v=1.3&key=d0a1759ac192365f50cc678a4a01c917&plugin=AMap.ArrivalRange,AMap.Scale,AMap.ToolBar,AMap.Geocoder,AMap.Transfer,AMap.Autocomplete"></script>
+    <script src="http://cache.amap.com/lbs/static/jquery.range.js"></script>
+    <style>
+        .control-panel {
+            position: absolute;
+            top: 30px;
+            right: 20px;
+        }
+        
+        .control-entry {
+            width: 280px;
+            background-color: rgba(119, 136, 153, 0.8);
+            font-family: fantasy, sans-serif;
+            text-align: left;
+            color: white;
+            overflow: auto;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .control-input {
+            margin-left: 120px;
+        }
+        
+        .control-input input[type="text"] {
+            width: 160px;
+        }
+        
+        .control-panel label {
+            float: left;
+            width: 120px;
+        }
+        
+        #transfer-panel {
+            position: absolute;
+            background-color: white;
+            max-height: 80%;
+            overflow-y: auto;
+            top: 30px;
+            left: 20px;
+            width: 250px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container"></div>
+    <div class="control-panel">
+        <div class="control-entry">
+            <label>选择工作地点：</label>
+            <div class="control-input">
+                <input id="work-location" type="text">
+            </div>
+        </div>
+        <div class="control-entry">
+            <label>选择通勤方式：</label>
+            <div class="control-input">
+                <input type="radio" name="vehicle" value="SUBWAY,BUS" onClick="takeBus(this)" checked/> 公交+地铁
+                <input type="radio" name="vehicle" value="SUBWAY" onClick="takeSubway(this)" /> 地铁
+            </div>
+        </div>
+        <div class="control-entry">
+            <label>导入房源文件：</label>
+            <div class="control-input">
+                <input type="file" name="file" onChange="importRentInfo(this)" />
+            </div>
+        </div>
+    </div>
+    <div id="transfer-panel"></div>
+    <script>
+        var map = new AMap.Map("container", {
+            resizeEnable: true,//页面可调整大小
+            zoomEnable: true, //可缩放
+            center: [116.397428, 39.90923],//地图中心，这里使用的是北京的经纬度，这里可以修改相关你自己像设定的地方q
+            zoom: 11//缩放等级，数字越大离地球越近
+        });
+
+        //添加标尺，参考带功能控件的地图。在加入功能控件的时候，需要在头部引入相关api:AMap.Scale 在第12行中加入相关的信息
+        var scale = new AMap.Scale();
+        map.addControl(scale);
+
+        var toolBar = new AMap.ToolBar();
+        map.addControl(toolBar);
+
+        //全局变量，后期要用到的地方
+        var arrivalRange = new AMap.ArrivalRange();//公交到达圈对象
+        var x, y, t, vehicle = "SUBWAY,BUS";//经度，纬度，时间（用不到），通勤方式（默认是地铁＋公交）
+        var workAddress, workMarker;//工作地点，工作标记
+        var rentMarkerArray = [];//房源标记队列
+        var polygonArray = [];//多边形队列，存储公交到达的计算结果
+        var amapTransfer;//路径规划
+        
+        // 信息窗体的使用，在房源标记被点击时弹出，参考给多个点添加信息窗体。
+        //信息窗体对象
+        var infoWindow = new AMap.InfoWindow({
+            offset: new AMap.Pixel(0, -30)
+        });
+        
+        //地址补完的使用，参考输入提示后查询。
+        var auto = new AMap.Autocomplete({
+            input: "work-location"
+        });
+        //添加事件监听，在选择补完的地址后调用workLocationSelected,这一步的意思是当你在输入相关的地址信息时，会给你自动定位，会帮助你自动定位。
+        AMap.event.addListener(auto, "select", workLocationSelected);
+
+        // 从这一步开始会进行相关的信息交互，location（）函数在208行定义
+        //更新工作地点，加载公交到达圈
+        function workLocationSelected(e) {
+            workAddress = e.poi.name;
+            loadWorkLocation();
+        }
+
+        function takeBus(radio) {
+            vehicle = radio.value;
+            loadWorkLocation()
+        }
+        function takeSubway(radio) {
+            vehicle = radio.value;
+            loadWorkLocation()
+        }
+
+        // 为房源文件跟 index.html 在同一个文件夹下，所以我们只要得到文件名就足够了。也就是你要获得的房源的csv文件
+        function importRentInfo(fileInfo) {
+            var file = fileInfo.files[0].name;
+            loadRentLocationByFile(file);
+        }
+
+        function loadWorkMarker(x, y, locationName) {
+            workMarker = new AMap.Marker({
+                map: map,
+                title: locationName,
+                icon: 'http://webapi.amap.com/theme/v1.3/markers/n/mark_r.png',
+                position: [x, y]
+            });
+        }
+
+        //loadWorkRange 的实现，在地图上绘制到达圈，参考：公交到达圈。你只要点击你的工作的区域，就给你显示你的到达交通工具
+        function loadWorkRange(x, y, t, color, v) {
+            arrivalRange.search([x, y], t, function(status, result) {
+                if (result.bounds) {
+                    for (var i = 0; i < result.bounds.length; i++) {
+                        var polygon = new AMap.Polygon({
+                            map: map,
+                            fillColor: color,//此处设计的是地图的标记圈的颜色
+                            fillOpacity: "0.4",
+                            strokeColor: color,
+                            strokeOpacity: "0.8",
+                            strokeWeight: 1
+                        });
+                        polygon.setPath(result.bounds[i]);
+                        polygonArray.push(polygon);
+                    }
+                }
+            }, {
+                policy: v
+            });
+        }
+
+        //addMarkerByAddress 的实现参考：按起终点名称规划路线与点标记。
+        function addMarkerByAddress(address) {
+            var geocoder = new AMap.Geocoder({
+                city: "北京",
+                radius: 1000
+            });
+            geocoder.getLocation(address, function(status, result) { //geocoder英文解释是地理编码
+                if (status === "complete" && result.info === 'OK') {
+                    var geocode = result.geocodes[0];
+
+                    //给租住的地方添加标注，给他们一个蓝颜色的点
+                    rentMarker = new AMap.Marker({
+                        map: map,
+                        title: address,
+                        icon: 'http://webapi.amap.com/theme/v1.3/markers/n/mark_b.png',
+                        position: [geocode.location.getLng(), geocode.location.getLat()]//租住地点的位 置
+                    });
+                    rentMarkerArray.push(rentMarker);
+                    // 注意其中这一句会被显示在信息窗体上。链接指向 58 品牌公寓馆的搜索页面，搜索的地址就是点标记（房源）的地址：
+                    rentMarker.content = "<div>房源：<a target = '_blank' href='http://bj.58.com/pinpaigongyu/?key=" + address + "'>" + address + "</a><div>"
+                    rentMarker.on('click', function(e) { //在房源标记被点击时打开
+                        infoWindow.setContent(e.target.content);//鼠标移到标记上会显示标记content属性的内容
+                        infoWindow.open(map, e.target.getPosition());//在标记的位置打开窗体
+                        if (amapTransfer) amapTransfer.clear();
+
+                        var transOptions = {
+                            map: map,
+                            city: '北京市',
+                            panel: 'transfer-panel',                           
+                            policy: AMap.TransferPolicy.LEAST_TIME //乘车策略
+                            };
+
+                        amapTransfer = new AMap.Transfer(transOptions);//构造公交换乘类  
+                        //根据起、终点名称查询公交换乘路线
+                        amapTransfer.search([{
+                            keyword: workAddress  //第一个元素city缺省时取transOptions的city属性,keyword是指起始位置，就是你的工作的地址
+                        }, {
+                            keyword: address //第二个元素city缺省时取transOptions的cityd属性，第二个keyword是指到达地址，就是你的租房子的地址
+                        }], function(status, result) {})  //result即是对应的公交路线数据信息，相关数据结构文档请参考  https://lbs.amap.com/api/javascript-api/reference/route-search#m_TransferResult
+
+                    });
+                }
+            })
+        }
+
+        //清空地图上的所有的到达圈，很重要。
+        function delWorkLocation() {
+            if (polygonArray) map.remove(polygonArray);
+            if (workMarker) map.remove(workMarker);
+            polygonArray = [];
+        }
+        
+        //清空房源标记信息
+        function delRentLocation() {
+            if (rentMarkerArray) map.remove(rentMarkerArray);
+            rentMarkerArray = [];//房源信息列表为空
+        }
+        
+        // loadWorkLocation 的实现，这部分包含了地理编码的内容，参考正向地理编码（地址-坐标）。
+        function loadWorkLocation() {
+            delWorkLocation();//首先清空地图上已有的到达圈，函数的定义在第205行
+            var geocoder = new AMap.Geocoder({
+                city: "北京",//城市设置为北京
+                radius: 1000
+            });
+            geocoder.getLocation(workAddress, function(status, result) {
+                if (status === "complete" && result.info === 'OK') {
+                    var geocode = result.geocodes[0];
+                    x = geocode.location.getLng();
+                    y = geocode.location.getLat();
+                    loadWorkMarker(x, y); //加载工作地点标记
+                    loadWorkRange(x, y, 60, "#3f67a5", vehicle); //加载60分钟内工作地点到达圈
+                    map.setZoomAndCenter(12, [x, y]);//地图移动到工作地点的位置
+                }
+            })
+        }
+
+        // （需要注重去研究）我们使用一个集合来记录所有的房源地址。
+        function loadRentLocationByFile(fileName) {   //获取到了rent.csv这个文件
+            //先删除现有的房源标记
+            delRentLocation();
+             //所有的地点都记录在集合中
+            var rent_locations = new Set();
+            //jquery操作
+            $.get(fileName, function(data) {
+                data = data.split("\n");  //用到了js中的split函数，会将数据以\n为划分，将rent.csv这个文件中的数据以"\n"为标准划分
+                //$.each(,function(index,item){}),each的第一个参数是需要遍历的对象，数组或者对象都可以。如果是数组的话，index就是表示下标，item表示元素值。
+                //如果是对象，index表示的是对象的key值，item表示key相对应的value。
+                data.forEach(function(item, index) {     //forEach作用是遍历数组，forEach() 方法对data数组的每个元素执行一次提供的函数。item表示元素值，index是指下标。即住址信息，地区，钱，相关网址
+                    rent_locations.add(item.split(",")[1]);//add() 方法把元素添加到rent_locations的这个空集合中
+                });
+                rent_locations.forEach(function(element, index) {
+                    addMarkerByAddress(element);
+                });
+            });
+        }
+    </script>
+</body>
+
+</html>

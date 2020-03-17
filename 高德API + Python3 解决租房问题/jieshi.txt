@@ -1,0 +1,12 @@
+ArrivalRange：公交到达圈
+Scale：标尺
+Geocoder：正向地理编码（地址-坐标）
+Transfer：路径规划
+Autocomplete：地址自动补全
+
+"https://bj.58.com/pinpaigongyu/?minprice=2000_4000&sourcetype=5"
+如果不能爬虫说明是有可能网页有验证码，需要先输入
+
+python -m http.server用来启动网页
+
+csv.py通过将数据库中的数据转换成相关的csv文件
